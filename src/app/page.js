@@ -1,103 +1,120 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Spinner from '@/components/Spinner'; // Make sure this path is correct
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import { loginValidationSchema } from '@/utils/validationSchemas';
+
+export default function LoginPage() {
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(loginValidationSchema),
+  });
+
+  // Check if already authenticated
+  useEffect(() => {
+    const userRole = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('userRole='))
+      ?.split('=')[1];
+
+    if (userRole === 'admin') {
+      router.push('/admin/viewusers');
+    } else if (userRole === 'employee') {
+      router.push('/employee/dashboard');
+    } else {
+      setCheckingAuth(false);
+    }
+  }, [router]);
+
+  const onSubmit = async ({ phone }) => {
+    setLoading(true);
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    setLoading(false);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.user.role === 'admin') {
+        router.push('/admin/viewusers');
+      } else {
+        router.push('/employee/dashboard');
+      }
+    } else {
+      alert('Invalid phone number');
+    }
+  };
+
+  const handleNumericInput = (e) => {
+    const onlyNums = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setValue('phone', onlyNums);
+  };
+
+  if (checkingAuth) return <div>Loading...</div>;
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="flex flex-col items-center min-h-screen bg-gray-100">
+      {/* Dummy Logo */}
+      <header className="w-full bg-white shadow p-4 flex justify-center">
+        <span className="text-xl font-bold">DummyLogo</span>
+      </header>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      <main className="flex flex-1 items-center justify-center w-full">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="bg-white p-8 rounded shadow-md w-96"
+        >
+          <h1 className="text-2xl font-bold mb-4">Login</h1>
+
+          <input
+            {...register('phone')}
+            type="text"
+            placeholder="Enter Phone Number"
+            maxLength="10"
+            inputMode="numeric"
+            onChange={handleNumericInput}
+            className={`w-full border p-2 mb-1 rounded ${
+              errors.phone ? 'border-red-500' : 'border-gray-300'
+            }`}
+          />
+          <p className="text-sm text-gray-500 mb-2">
+            Please enter your 10-digit mobile number
+          </p>
+          {errors.phone && (
+            <p className="text-red-600 text-sm mb-2">
+              {errors.phone.message}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 rounded flex items-center justify-center gap-2"
+            disabled={loading}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+            {loading ? (
+              <>
+                <Spinner size="sm" color="white" />
+                Logging in...
+              </>
+            ) : (
+              'Login'
+            )}
+          </button>
+        </form>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
